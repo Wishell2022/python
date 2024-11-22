@@ -3,19 +3,22 @@ import re
 import pandas as pd
 import json
 import matplotlib.pyplot as plt
-from tkinter import Tk, Button, Label, filedialog
+from tkinter import Tk, Button, Label, filedialog, ttk, messagebox, DoubleVar
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Regular expression to extract scannum from the line
 scannum_pattern = re.compile(r'\[scannum:(\d+)\]')
 
 # Function to process log files and calculate threshold counts
-def process_log_files(folder_path):
+def process_log_files(folder_path, progress_var):
     # Data structures to hold entries for files with and without "null"
     scannum_data_with_null = {}
     scannum_data_without_null = {}
 
     # Loop through each file in the folder
+    file_count = sum(1 for filename in os.listdir(folder_path) if filename.endswith('.log'))
+    processed_files = 0
+
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
         
@@ -51,6 +54,9 @@ def process_log_files(folder_path):
                         except json.JSONDecodeError:
                             continue
 
+            processed_files += 1
+            progress_var.set(processed_files / file_count * 100)
+
     # Function to calculate counts for each threshold for a given data set
     def calculate_threshold_counts(scannum_data):
         threshold_counts = []
@@ -72,7 +78,10 @@ def process_log_files(folder_path):
 def select_folder():
     folder_path = filedialog.askdirectory()
     if folder_path:
-        df_counts_with_null, df_counts_without_null = process_log_files(folder_path)
+        progress_var.set(0)
+        progress_bar.pack(pady=10)
+        df_counts_with_null, df_counts_without_null = process_log_files(folder_path, progress_var)
+        progress_bar.pack_forget()
 
         # Plotting the results in the GUI
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -100,13 +109,25 @@ def select_folder():
 # Set up the Tkinter GUI
 root = Tk()
 root.title("Log File Analyzer")
+root.geometry("800x600")
+
+# Add an icon (optional)
+# root.iconbitmap('path_to_icon.ico')
 
 # Button to select folder
-select_button = Button(root, text="Select Folder and Analyze", command=select_folder)
+select_button = Button(root, text="Select Folder and Analyze", command=select_folder, font=("Arial", 14), bg="#4CAF50", fg="white")
 select_button.pack(pady=20)
 
 # Label to display result message
-result_label = Label(root, text="")
+result_label = Label(root, text="", font=("Arial", 12))
 result_label.pack(pady=10)
+
+# Progress bar
+progress_var = DoubleVar()
+progress_bar = ttk.Progressbar(root, variable=progress_var, maximum=100)
+
+# Help message
+help_label = Label(root, text="Select a folder containing log files to analyze.", font=("Arial", 10), fg="gray")
+help_label.pack(pady=10)
 
 root.mainloop()
